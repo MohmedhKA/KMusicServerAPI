@@ -9,11 +9,11 @@ const app = express();
 const PORT = 3000;
 
 app.use(cors());
-app.use('/thumb', express.static('/home/shin_chan/musicServer/Data/Anger/thumb'));
-app.use('/thumb', express.static('/home/shin_chan/musicServer/Data/Excitement/thumb'));
-app.use('/thumb', express.static('/home/shin_chan/musicServer/Data/Joy/thumb'));
-app.use('/thumb', express.static('/home/shin_chan/musicServer/Data/Sad/thumb'));
-app.use('/thumb', express.static('/home/shin_chan/musicServer/Data/Surprise/thumb'));
+app.use('/thumb/anger', express.static('/home/shin_chan/musicServer/Data/Anger/thumb'));
+app.use('/thumb/excitement', express.static('/home/shin_chan/musicServer/Data/Excitement/thumb'));
+app.use('/thumb/joy', express.static('/home/shin_chan/musicServer/Data/Joy/thumb'));
+app.use('/thumb/sad', express.static('/home/shin_chan/musicServer/Data/Sad/thumb'));
+app.use('/thumb/surprise', express.static('/home/shin_chan/musicServer/Data/Surprise/thumb'));
 
 app.use('/song/anger', express.static('/home/shin_chan/musicServer/Data/Anger'));
 app.use('/song/excitement', express.static('/home/shin_chan/musicServer/Data/Excitement'));
@@ -56,6 +56,6 @@ app.get("/songs/title/:title", (req, res) => {
 });
 
 // Start the server
-app.listen(PORT, () => {
-    console.log(`🎵 Music API running at http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🎵 Music API running at http://100.102.217.22:${PORT}`);
 });

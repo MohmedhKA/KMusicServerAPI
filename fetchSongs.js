@@ -13,16 +13,15 @@ if (fs.existsSync(metadataFile)) {
 
 // Update Thumbnail URL for All Songs
 const songs = songsMetadata.map(song => {
+    const emotion = song.emotion.toLowerCase(); // Ensure emotion is included
+
     return {
         ...song,
-        thumbnail: song.thumbnail
-            .replace('/home/shin_chan/musicServer/Data/Anger/thumb/', 'http://192.168.1.128:3000/thumb/')
-            .replace('/home/shin_chan/musicServer/Data/Excitement/thumb/', 'http://192.168.1.128:3000/thumb/')
-            .replace('/home/shin_chan/musicServer/Data/Joy/thumb/', 'http://192.168.1.128:3000/thumb/')
-            .replace('/home/shin_chan/musicServer/Data/Sad/thumb/', 'http://192.168.1.128:3000/thumb/')
-            .replace('/home/shin_chan/musicServer/Data/Surprise/thumb/', 'http://192.168.1.128:3000/thumb/')
+        // Single thumbnail URL (same for compressed & full-size, handled on the app side)
+        thumbnail: `http://100.102.217.22:3000/thumb/${emotion}/${path.basename(song.thumbnail)}`
     };
 });
+
 
 // Fetch all songs
 function getAllSongs() {
@@ -56,7 +55,8 @@ function findFileInDirectory(directory, filename) {
 }
 
 // Recursively scan directories for all .mp3 files
-const baseUrl = 'http://192.168.1.128:3000';
+const baseUrl = 'http://100.102.217.22:3000';
+
 const scanDirectoriesForSongs = (dirPath) => {
     let results = [];
 
