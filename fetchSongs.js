@@ -56,6 +56,7 @@ function findFileInDirectory(directory, filename) {
 
 // Recursively scan directories for all .mp3 files
 const baseUrl = 'http://100.102.217.22:3000';
+
 const scanDirectoriesForSongs = (dirPath) => {
     let results = [];
 

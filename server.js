@@ -15,7 +15,6 @@ app.use('/thumb/joy', express.static('/home/shin_chan/musicServer/Data/Joy/thumb
 app.use('/thumb/sad', express.static('/home/shin_chan/musicServer/Data/Sad/thumb'));
 app.use('/thumb/surprise', express.static('/home/shin_chan/musicServer/Data/Surprise/thumb'));
 
-
 app.use('/song/anger', express.static('/home/shin_chan/musicServer/Data/Anger'));
 app.use('/song/excitement', express.static('/home/shin_chan/musicServer/Data/Excitement'));
 app.use('/song/joy', express.static('/home/shin_chan/musicServer/Data/Joy'));
