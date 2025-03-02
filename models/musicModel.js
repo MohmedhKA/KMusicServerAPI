@@ -1,0 +1,78 @@
+const db = require('../config/db');
+
+// Music model functions
+const musicModel = {
+  // Get all songs
+  getAllSongs: async () => {
+    const result = await db.query('SELECT * FROM songs ORDER BY title');
+    return result.rows;
+  },
+
+  // Get songs by emotion
+  getSongsByEmotion: async (emotion) => {
+    const result = await db.query('SELECT * FROM songs WHERE emotion = $1 ORDER BY title', [emotion]);
+    return result.rows;
+  },
+
+  // Get song by ID
+  getSongById: async (id) => {
+    const result = await db.query('SELECT * FROM songs WHERE id = $1', [id]);
+    return result.rows[0];
+  },
+
+  // Get song by title (for exact match)
+  getSongByTitle: async (title) => {
+    const result = await db.query('SELECT * FROM songs WHERE title = $1', [title]);
+    return result.rows[0];
+  },
+
+  // Search songs by keyword in title or artist
+  searchSongs: async (keyword) => {
+    const searchPattern = `%${keyword}%`; // SQL LIKE pattern
+    const result = await db.query(
+      'SELECT * FROM songs WHERE title ILIKE $1 OR artist ILIKE $1 ORDER BY title',
+      [searchPattern]
+    );
+    return result.rows;
+  },
+
+  // Add a new song
+  addSong: async (songData) => {
+    const { title, artist, album, duration, emotion, fileLocation, thumbnail } = songData;
+    
+    // Check if song already exists
+    const existingResult = await db.query('SELECT * FROM songs WHERE title = $1 AND artist = $2', [title, artist]);
+    if (existingResult.rows.length > 0) {
+      throw new Error('Song already exists in the database');
+    }
+    
+    const result = await db.query(
+      `INSERT INTO songs (title, artist, album, duration, emotion, "fileLocation", thumbnail)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [title, artist, album, duration, emotion, fileLocation, thumbnail]
+    );
+    
+    return result.rows[0];
+  },
+
+  // Delete a song by ID
+  deleteSong: async (id) => {
+    // First, check if the song exists
+    const checkResult = await db.query('SELECT * FROM songs WHERE id = $1', [id]);
+    if (checkResult.rows.length === 0) {
+      throw new Error('Song not found');
+    }
+    
+    // Delete the song
+    const result = await db.query('DELETE FROM songs WHERE id = $1 RETURNING *', [id]);
+    return result.rows[0];
+  },
+
+  // Get available emotions
+  getEmotions: async () => {
+    const result = await db.query('SELECT DISTINCT emotion FROM songs ORDER BY emotion');
+    return result.rows.map(row => row.emotion);
+  }
+};
+
+module.exports = musicModel;

@@ -1,61 +1,46 @@
-const express = require("express");
-const cors = require("cors");
-const path = require("path");
-const fs = require("fs");
+const express = require('express');
+const cors = require('cors');
+const multer = require('multer');
+const path = require('path');
+const { Pool } = require('pg');
+const musicRoutes = require('./routes/musicRoutes');
+const playlistRoutes = require('./routes/playlistRoutes');
 
-const { getAllSongs, getSongsByEmotion, getSongByTitle, findFileInDirectory } = require("./fetchSongs");
-
+// Initialize Express app
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
+// Middleware
 app.use(cors());
-app.use('/thumb/anger', express.static('/home/shin_chan/musicServer/Data/Anger/thumb'));
-app.use('/thumb/excitement', express.static('/home/shin_chan/musicServer/Data/Excitement/thumb'));
-app.use('/thumb/joy', express.static('/home/shin_chan/musicServer/Data/Joy/thumb'));
-app.use('/thumb/sad', express.static('/home/shin_chan/musicServer/Data/Sad/thumb'));
-app.use('/thumb/surprise', express.static('/home/shin_chan/musicServer/Data/Surprise/thumb'));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-app.use('/song/anger', express.static('/home/shin_chan/musicServer/Data/Anger'));
-app.use('/song/excitement', express.static('/home/shin_chan/musicServer/Data/Excitement'));
-app.use('/song/joy', express.static('/home/shin_chan/musicServer/Data/Joy'));
-app.use('/song/sad', express.static('/home/shin_chan/musicServer/Data/Sad'));
-app.use('/song/surprise', express.static('/home/shin_chan/musicServer/Data/Surprise'));
+// Static file serving (for music files and thumbnails)
+app.use('/music', express.static('/home/shin_chan/musicServer/Data'));
+app.use('/thumbnails', express.static('/home/shin_chan/musicServer/Data/thumb'));
 
-// 🔹 API: Get all songs
-app.get("/songs", (req, res) => {
-    res.json(getAllSongs());
+// Routes
+app.use('/api/music', musicRoutes);
+app.use('/api/playlists', playlistRoutes);
+
+// Health check
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ status: 'OK', message: 'Server is running' });
 });
 
-const fetchSongs = require('./fetchSongs');
-
-// Serve all songs regardless of emotion tag
-app.get('/song/:filename', (req, res) => {
-    const filename = decodeURIComponent(req.params.filename);
-    const baseDir = '/home/shin_chan/musicServer/Data';
-    const filePath = findFileInDirectory(baseDir, filename);
-
-
-    // Check if the file exists
-    if (filePath && fs.existsSync(filePath)) {
-        res.sendFile(filePath);
-    } else {
-        res.status(404).send('File not found');
-    }
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error('Server error:', err);
+  res.status(500).json({ 
+    error: true, 
+    message: 'An unexpected error occurred',
+    details: process.env.NODE_ENV === 'development' ? err.message : undefined
+  });
 });
 
-// 🔹 API: Get songs by emotion
-app.get("/songs/emotion/:emotion", (req, res) => {
-    res.json(getSongsByEmotion(req.params.emotion));
+// Start server
+app.listen(PORT, () => {
+  console.log(`Music server is running on port ${PORT}`);
 });
 
-// 🔹 API: Get song by title
-app.get("/songs/title/:title", (req, res) => {
-    const song = getSongByTitle(req.params.title);
-    if (song) res.json(song);
-    else res.status(404).json({ message: "Song not found" });
-});
-
-// Start the server
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🎵 Music API running at http://100.102.217.22:${PORT}`);
-});
+module.exports = app;
