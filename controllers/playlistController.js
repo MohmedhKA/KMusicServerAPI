@@ -1,5 +1,71 @@
 const playlistModel = require('../models/playlistModel');
 const musicModel = require('../models/musicModel');
+const path = require('path');
+
+// Base URL for the server
+const BASE_URL = process.env.BASE_URL || 'http://100.102.217.22:3000';
+
+// Function to convert playlist thumbnail path to URL
+const convertPlaylistPath = (playlist) => {
+  if (!playlist) return null;
+  
+  const playlistCopy = { ...playlist };
+  
+  // Convert thumbnail path to URL
+  if (playlistCopy.thumbnail) {
+    const thumbBasePath = '/home/shin_chan/musicServer/Data/thumb/';
+    if (playlistCopy.thumbnail.startsWith(thumbBasePath)) {
+      const relativePath = playlistCopy.thumbnail.substring(thumbBasePath.length);
+      playlistCopy.thumbnailUrl = `${BASE_URL}/thumbnails/${encodeURIComponent(relativePath)}`;
+    } else {
+      playlistCopy.thumbnailUrl = `${BASE_URL}/thumbnails/${encodeURIComponent(path.basename(playlistCopy.thumbnail))}`;
+    }
+  }
+  
+  // If playlist has songs, convert their paths too
+  if (playlistCopy.songs && Array.isArray(playlistCopy.songs)) {
+    playlistCopy.songs = playlistCopy.songs.map(song => convertSongPath(song));
+  }
+  
+  return playlistCopy;
+};
+
+// Function to convert song paths to URLs
+const convertSongPath = (song) => {
+  if (!song) return null;
+  
+  const songCopy = { ...song };
+  
+  // Convert file location to URL
+  if (songCopy.fileLocation) {
+    const musicBasePath = '/home/shin_chan/musicServer/Data/';
+    if (songCopy.fileLocation.startsWith(musicBasePath)) {
+      const relativePath = songCopy.fileLocation.substring(musicBasePath.length);
+      songCopy.fileUrl = `${BASE_URL}/music/${encodeURIComponent(relativePath)}`;
+    } else {
+      songCopy.fileUrl = `${BASE_URL}/music/${encodeURIComponent(path.basename(songCopy.fileLocation))}`;
+    }
+  }
+  
+  // Convert thumbnail path to URL
+  if (songCopy.thumbnail) {
+    const thumbBasePath = '/home/shin_chan/musicServer/Data/thumb/';
+    if (songCopy.thumbnail.startsWith(thumbBasePath)) {
+      const relativePath = songCopy.thumbnail.substring(thumbBasePath.length);
+      songCopy.thumbnailUrl = `${BASE_URL}/thumbnails/${encodeURIComponent(relativePath)}`;
+    } else {
+      songCopy.thumbnailUrl = `${BASE_URL}/thumbnails/${encodeURIComponent(path.basename(songCopy.thumbnail))}`;
+    }
+  }
+  
+  return songCopy;
+};
+
+// Convert an array of playlists
+const convertArrayPlaylistsToUrls = (playlists) => {
+  if (!playlists) return [];
+  return playlists.map(playlist => convertPlaylistPath(playlist));
+};
 
 // Playlist controller functions
 const playlistController = {
@@ -25,10 +91,14 @@ const playlistController = {
   getAllPlaylists: async (req, res) => {
     try {
       const playlists = await playlistModel.getAllPlaylists();
+      
+      // Convert local paths to URLs
+      const playlistsWithUrls = convertArrayPlaylistsToUrls(playlists);
+      
       res.json({
         success: true,
-        count: playlists.length,
-        data: playlists
+        count: playlistsWithUrls.length,
+        data: playlistsWithUrls
       });
     } catch (error) {
       console.error('Error fetching playlists:', error);
@@ -53,9 +123,12 @@ const playlistController = {
         });
       }
       
+      // Convert local paths to URLs
+      const playlistWithUrls = convertPlaylistPath(playlist);
+      
       res.json({
         success: true,
-        data: playlist
+        data: playlistWithUrls
       });
     } catch (error) {
       console.error('Error fetching playlist:', error);
@@ -91,10 +164,13 @@ const playlistController = {
         thumbnail
       });
       
+      // Convert local paths to URLs
+      const playlistWithUrls = convertPlaylistPath(playlist);
+      
       res.status(201).json({
         success: true,
         message: 'Playlist created successfully',
-        data: playlist
+        data: playlistWithUrls
       });
     } catch (error) {
       console.error('Error creating playlist:', error);
@@ -175,10 +251,13 @@ const playlistController = {
       
       const result = await playlistModel.deletePlaylist(id);
       
+      // Convert local paths to URLs
+      const resultWithUrls = convertPlaylistPath(result);
+      
       res.json({
         success: true,
         message: 'Playlist deleted successfully',
-        data: result
+        data: resultWithUrls
       });
     } catch (error) {
       console.error('Error deleting playlist:', error);

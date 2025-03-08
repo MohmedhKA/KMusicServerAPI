@@ -3,6 +3,47 @@ const path = require('path');
 const musicModel = require('../models/musicModel');
 const { extractMetadata } = require('../utils/metadataExtractor');
 
+// Base URL for the server
+const BASE_URL = process.env.BASE_URL || 'http://100.102.217.22:3000';
+
+// Function to convert local file paths to accessible URLs
+const convertPathsToUrls = (song) => {
+  if (!song) return null;
+  
+  const songCopy = { ...song };
+  
+  // Convert file location to URL
+  if (songCopy.fileLocation) {
+    // Extract the relative path from the absolute path
+    const musicBasePath = '/home/shin_chan/musicServer/Data/';
+    if (songCopy.fileLocation.startsWith(musicBasePath)) {
+      const relativePath = songCopy.fileLocation.substring(musicBasePath.length);
+      songCopy.fileUrl = `${BASE_URL}/music/${encodeURIComponent(relativePath)}`;
+    } else {
+      songCopy.fileUrl = `${BASE_URL}/music/${encodeURIComponent(path.basename(songCopy.fileLocation))}`;
+    }
+  }
+  
+  // Convert thumbnail path to URL
+  if (songCopy.thumbnail) {
+    const thumbBasePath = '/home/shin_chan/musicServer/Data/thumb/';
+    if (songCopy.thumbnail.startsWith(thumbBasePath)) {
+      const relativePath = songCopy.thumbnail.substring(thumbBasePath.length);
+      songCopy.thumbnailUrl = `${BASE_URL}/thumbnails/${encodeURIComponent(relativePath)}`;
+    } else {
+      songCopy.thumbnailUrl = `${BASE_URL}/thumbnails/${encodeURIComponent(path.basename(songCopy.thumbnail))}`;
+    }
+  }
+  
+  return songCopy;
+};
+
+// Convert an array of songs
+const convertArrayPathsToUrls = (songs) => {
+  if (!songs) return [];
+  return songs.map(song => convertPathsToUrls(song));
+};
+
 // Music controller functions
 const musicController = {
   // Get all songs or filter by emotion
@@ -17,10 +58,13 @@ const musicController = {
         songs = await musicModel.getAllSongs();
       }
       
+      // Convert local paths to URLs
+      const songsWithUrls = convertArrayPathsToUrls(songs);
+      
       res.json({
         success: true,
-        count: songs.length,
-        data: songs
+        count: songsWithUrls.length,
+        data: songsWithUrls
       });
     } catch (error) {
       console.error('Error fetching songs:', error);
@@ -45,9 +89,12 @@ const musicController = {
         });
       }
       
+      // Convert local paths to URLs
+      const songWithUrls = convertPathsToUrls(song);
+      
       res.json({
         success: true,
-        data: song
+        data: songWithUrls
       });
     } catch (error) {
       console.error('Error fetching song:', error);
@@ -72,14 +119,19 @@ const musicController = {
         });
       }
       
-      // Return file location for the client to play
+      // Convert local paths to URLs
+      const songWithUrls = convertPathsToUrls(song);
+      
+      // Return file URL for the client to play
       res.json({
         success: true,
         data: {
-          title: song.title,
-          artist: song.artist,
-          fileLocation: song.fileLocation,
-          thumbnail: song.thumbnail
+          title: songWithUrls.title,
+          artist: songWithUrls.artist,
+          fileLocation: songWithUrls.fileLocation, // Keep for backward compatibility
+          fileUrl: songWithUrls.fileUrl,          // Add URL for streaming
+          thumbnail: songWithUrls.thumbnail,      // Keep for backward compatibility
+          thumbnailUrl: songWithUrls.thumbnailUrl // Add URL for thumbnails
         }
       });
     } catch (error) {
@@ -106,10 +158,13 @@ const musicController = {
       
       const songs = await musicModel.searchSongs(keyword);
       
+      // Convert local paths to URLs
+      const songsWithUrls = convertArrayPathsToUrls(songs);
+      
       res.json({
         success: true,
-        count: songs.length,
-        data: songs
+        count: songsWithUrls.length,
+        data: songsWithUrls
       });
     } catch (error) {
       console.error('Error searching songs:', error);
@@ -183,10 +238,13 @@ const musicController = {
       // Add song to database
       const song = await musicModel.addSong(songData);
       
+      // Convert local paths to URLs
+      const songWithUrls = convertPathsToUrls(song);
+      
       res.status(201).json({
         success: true,
         message: 'Song added successfully',
-        data: song
+        data: songWithUrls
       });
     } catch (error) {
       console.error('Error adding song:', error);
@@ -227,10 +285,13 @@ const musicController = {
       }
       */
       
+      // Convert local paths to URLs for the response
+      const deletedSongWithUrls = convertPathsToUrls(deletedSong);
+      
       res.json({
         success: true,
         message: 'Song deleted successfully',
-        data: deletedSong
+        data: deletedSongWithUrls
       });
     } catch (error) {
       console.error('Error deleting song:', error);

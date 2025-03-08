@@ -6,6 +6,11 @@ const { Pool } = require('pg');
 const musicRoutes = require('./routes/musicRoutes');
 const playlistRoutes = require('./routes/playlistRoutes');
 
+// Set BASE_URL for converting file paths to URLs
+// This can be overridden with environment variable
+process.env.BASE_URL = process.env.BASE_URL || 'http://100.102.217.22:3000';
+console.log(`Using BASE_URL: ${process.env.BASE_URL}`);
+
 // Initialize Express app
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -16,6 +21,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Static file serving (for music files and thumbnails)
+// Use the relative paths in URL patterns
 app.use('/music', express.static('/home/shin_chan/musicServer/Data'));
 app.use('/thumbnails', express.static('/home/shin_chan/musicServer/Data/thumb'));
 
@@ -41,6 +47,8 @@ app.use((err, req, res, next) => {
 // Start server
 app.listen(PORT, () => {
   console.log(`Music server is running on port ${PORT}`);
+  console.log(`Music files available at: ${process.env.BASE_URL}/music`);
+  console.log(`Thumbnails available at: ${process.env.BASE_URL}/thumbnails`);
 });
 
 module.exports = app;
