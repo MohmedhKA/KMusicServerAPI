@@ -47,7 +47,7 @@ const musicModel = {
     }
     
     const result = await db.query(
-      `INSERT INTO songs (title, artist, album, duration, emotion, "fileLocation", thumbnail)
+      `INSERT INTO songs (title, artist, album, duration, emotion, file_location, thumbnail)
        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
       [title, artist, album, duration, emotion, fileLocation, thumbnail]
     );
