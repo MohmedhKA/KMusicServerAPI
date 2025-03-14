@@ -1,8 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const multer = require('multer');
 const path = require('path');
-const { Pool } = require('pg');
 const musicRoutes = require('./routes/musicRoutes');
 const playlistRoutes = require('./routes/playlistRoutes');
 
@@ -21,8 +19,15 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Static file serving (for music files and thumbnails)
-// Use the relative paths in URL patterns
-app.use('/music', express.static('/home/shin_chan/musicServer/Data'));
+app.use('/music', express.static('/home/shin_chan/musicServer/Data', {
+  setHeaders: (res, path) => {
+    res.set('Accept-Ranges', 'bytes');
+    if (path.endsWith('.mp3')) {
+      res.set('Content-Type', 'audio/mpeg');
+    }
+  }
+}));
+
 app.use('/thumbnails', express.static('/home/shin_chan/musicServer/Data/thumb'));
 
 // Routes

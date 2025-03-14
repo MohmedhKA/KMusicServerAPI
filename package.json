@@ -11,8 +11,10 @@
         "cors": "^2.8.5",
         "express": "^4.18.2",
         "multer": "^1.4.5-lts.1",
-        "music-metadata": "^7.13.4",
-        "pg": "^8.11.3"
+        "music-metadata": "^7.14.0",
+        "node-id3": "^0.2.8",
+        "pg": "^8.11.3",
+        "sharp": "^0.33.5"
     },
     "devDependencies": {
         "nodemon": "^3.0.1"

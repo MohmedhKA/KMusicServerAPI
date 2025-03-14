@@ -2,6 +2,23 @@ const db = require('../config/db');
 
 // Music model functions
 const musicModel = {
+  // Add new song function at the top
+  addSong: async (songData) => {
+    const result = await db.query(
+      'INSERT INTO songs (title, artist, album, duration, emotion, file_location, thumbnail) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      [
+        songData.title,
+        songData.artist,
+        songData.album,
+        songData.duration,
+        songData.emotion,
+        songData.file_location,
+        songData.thumbnail
+      ]
+    );
+    return result.rows[0];
+  },
+
   // Get all songs
   getAllSongs: async () => {
     const result = await db.query('SELECT * FROM songs ORDER BY title');
@@ -34,25 +51,6 @@ const musicModel = {
       [searchPattern]
     );
     return result.rows;
-  },
-
-  // Add a new song
-  addSong: async (songData) => {
-    const { title, artist, album, duration, emotion, fileLocation, thumbnail } = songData;
-    
-    // Check if song already exists
-    const existingResult = await db.query('SELECT * FROM songs WHERE title = $1 AND artist = $2', [title, artist]);
-    if (existingResult.rows.length > 0) {
-      throw new Error('Song already exists in the database');
-    }
-    
-    const result = await db.query(
-      `INSERT INTO songs (title, artist, album, duration, emotion, file_location, thumbnail)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [title, artist, album, duration, emotion, fileLocation, thumbnail]
-    );
-    
-    return result.rows[0];
   },
 
   // Delete a song by ID
