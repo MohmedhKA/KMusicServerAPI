@@ -3,7 +3,7 @@ const musicModel = require('../models/musicModel');
 const path = require('path');
 
 // Base URL for the server
-const BASE_URL = process.env.BASE_URL || 'http://100.102.217.22:3000';
+const BASE_URL = process.env.BASE_URL || 'https://100.102.217.22:3000';
 
 // Function to convert playlist thumbnail path to URL
 const convertPlaylistPath = (playlist) => {

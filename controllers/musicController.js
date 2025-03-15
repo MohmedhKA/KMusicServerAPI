@@ -5,7 +5,7 @@ const mm = require('music-metadata');
 const sharp = require('sharp');
 
 // Base URL for the server
-const BASE_URL = process.env.BASE_URL || 'http://100.102.217.22:3000';
+const BASE_URL = process.env.BASE_URL || 'https://100.102.217.22:3000';
 
 // Base paths
 const DATA_DIR = '/home/shin_chan/musicServer/Data';
