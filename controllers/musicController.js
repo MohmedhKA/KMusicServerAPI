@@ -107,13 +107,30 @@ const uploadSong = async (req, res) => {
     }
 
     const file = req.file;
+    const metadata = await mm.parseFile(file.path);
+    const title = metadata.common.title || path.basename(file.originalname, path.extname(file.originalname));
+
+    // Check for existing song with same title
+    const existingSong = await musicModel.getSongByTitle(title);
+    if (existingSong) {
+      // Delete the uploaded file
+      if (fs.existsSync(file.path)) {
+        fs.unlinkSync(file.path);
+      }
+      
+      return res.status(409).json({
+        success: false,
+        message: 'Song with this title already exists',
+        existingSong: convertPathsToUrls(existingSong)
+      });
+    }
+
     const emotion = req.body.emotion || 'Unknown'; // Get emotion from request body
 
     // File is already in the correct directory (DATA_DIR) thanks to multer config
     const finalFilePath = file.path;
 
     // Extract metadata
-    const metadata = await mm.parseFile(finalFilePath);
     const common = metadata.common;
 
     // Prepare song data
