@@ -2,45 +2,35 @@ const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 
-// Set up storage for uploaded music files
+// Configure music storage
 const musicStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadDir = '/home/shin_chan/musicServer/Data';
-    
-    // Create directory if it doesn't exist
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    
-    cb(null, uploadDir);
+    cb(null, '/home/shin_chan/musicServer/Data');
   },
   filename: (req, file, cb) => {
-    // Keep original filename but sanitize it
-    const originalName = file.originalname;
-    const sanitizedName = originalName.replace(/[^a-zA-Z0-9._-]/g, '_');
-    // Add timestamp to prevent filename conflicts
-    const timestamp = Date.now();
-    cb(null, `${timestamp}_${sanitizedName}`);
+    // Remove timestamp, just use the original filename
+    // Sanitize filename to remove special characters and spaces
+    const sanitizedName = file.originalname
+      .toLowerCase()
+      .replace(/[^a-z0-9.]/g, '_');
+    
+    cb(null, sanitizedName);
   }
 });
 
-// Filter to accept only audio files
-const audioFileFilter = (req, file, cb) => {
-  // Accept only mp3, wav, flac, etc.
-  if (file.mimetype.startsWith('audio/') || 
-      ['.mp3', '.wav', '.flac', '.ogg', '.m4a'].includes(path.extname(file.originalname).toLowerCase())) {
-    cb(null, true);
-  } else {
-    cb(new Error('Only audio files are allowed!'), false);
-  }
-};
-
-// Set up multer for music uploads
+// Configure upload middleware
 const uploadMusic = multer({
   storage: musicStorage,
-  fileFilter: audioFileFilter,
+  fileFilter: (req, file, cb) => {
+    // Check file type
+    if (file.mimetype === 'audio/mpeg' || file.mimetype === 'audio/mp3') {
+      cb(null, true);
+    } else {
+      cb(new Error('Only MP3 files are allowed'), false);
+    }
+  },
   limits: {
-    fileSize: 50 * 1024 * 1024  // 50MB limit
+    fileSize: 10 * 1024 * 1024 // 10MB limit
   }
 });
 
