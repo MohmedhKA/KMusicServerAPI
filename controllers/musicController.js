@@ -106,40 +106,79 @@ const uploadSong = async (req, res) => {
       });
     }
 
-    // Check if a song with same filename already exists
-    const existingSong = await musicModel.getSongByFileName(req.file.filename);
+    const file = req.file;
+    const metadata = await mm.parseFile(file.path);
+    const title = metadata.common.title || path.basename(file.originalname, path.extname(file.originalname));
+
+    // Check for existing song with same title
+    const existingSong = await musicModel.getSongByTitle(title);
     if (existingSong) {
-      // Remove the uploaded file
-      fs.unlinkSync(req.file.path);
+      // Delete the uploaded file
+      if (fs.existsSync(file.path)) {
+        fs.unlinkSync(file.path);
+      }
+      
       return res.status(409).json({
         success: false,
-        message: 'A song with this name already exists',
-        existingSong
+        message: 'Song with this title already exists',
+        existingSong: convertPathsToUrls(existingSong)
       });
     }
 
-    // Process the song upload
+    const emotion = req.body.emotion || 'Unknown'; // Get emotion from request body
+
+    // File is already in the correct directory (DATA_DIR) thanks to multer config
+    const finalFilePath = file.path;
+
+    // Extract metadata
+    const common = metadata.common;
+
+    // Prepare song data
     const songData = {
-      title: path.parse(req.file.originalname).name, // Remove extension from filename
-      fileLocation: req.file.path,
-      emotion: req.body.emotion
-      // ... other song data
+      title: common.title || path.basename(file.originalname, path.extname(file.originalname)),
+      artist: common.artist || 'Unknown Artist',
+      album: common.album || 'Unknown Album',
+      duration: metadata.format.duration ? metadata.format.duration.toFixed(2) : 0,
+      emotion: emotion,
+      file_location: finalFilePath,
+      thumbnail: ''
     };
 
-    const newSong = await musicModel.addSong(songData);
+    // Handle thumbnail extraction
+    if (common.picture && common.picture.length > 0) {
+      const imageBuffer = common.picture[0].data;
+      const thumbnailPath = path.join(DATA_DIR, 'thumb', `${path.basename(file.filename, '.mp3')}.jpg`);
+
+      await sharp(imageBuffer)
+        .resize(300, 300)
+        .toFile(thumbnailPath);
+      
+      songData.thumbnail = thumbnailPath;
+    } else {
+      // Use default thumbnail
+      songData.thumbnail = DEFAULT_THUMBNAIL;
+    }
+
+    // Save to database
+    const savedSong = await musicModel.addSong(songData);
+    
+    // Convert paths to URLs for response
+    const songWithUrls = convertPathsToUrls(savedSong);
 
     res.status(201).json({
       success: true,
       message: 'Song uploaded successfully',
-      data: newSong
+      data: songWithUrls
     });
 
   } catch (error) {
-    // If there's an error, clean up the uploaded file
-    if (req.file) {
+    console.error('Error uploading song:', error);
+    
+    // Clean up file if it exists
+    if (req.file && req.file.path && fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);
     }
-    console.error('Error uploading song:', error);
+
     res.status(500).json({
       success: false,
       message: 'Error uploading song',
