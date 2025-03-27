@@ -43,6 +43,12 @@ const musicModel = {
     return result.rows[0];
   },
 
+  // Get song by file name
+  getSongByFileName: async (fileName) => {
+    const result = await db.query('SELECT * FROM songs WHERE file_location = $1', [fileName]);
+    return result.rows[0];
+  },
+
   // Search songs by keyword in title or artist
   searchSongs: async (keyword) => {
     const searchPattern = `%${keyword}%`; // SQL LIKE pattern
