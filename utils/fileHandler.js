@@ -18,9 +18,8 @@ const musicStorage = multer.diskStorage({
     // Keep original filename but sanitize it
     const originalName = file.originalname;
     const sanitizedName = originalName.replace(/[^a-zA-Z0-9._-]/g, '_');
-    // Add timestamp to prevent filename conflicts
-    const timestamp = Date.now();
-    cb(null, `${timestamp}_${sanitizedName}`);
+    // Remove timestamp and use sanitized name directly
+    cb(null, sanitizedName);
   }
 });
 
