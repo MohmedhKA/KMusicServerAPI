@@ -4,6 +4,10 @@ const musicController = require('../controllers/musicController');
 const { uploadMusic } = require('../utils/fileHandler');
 const path = require('path');
 const { ensureHttps, generateUrl } = require('../utils/urlHelpers');
+const authMiddleware = require('../middleware/auth');
+
+// Protect all routes
+router.use(authMiddleware);
 
 // Update any formatting function
 const formatSong = (song) => {

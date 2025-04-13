@@ -192,29 +192,17 @@ const musicController = {
   // Get all songs or filter by emotion
   getSongs: async (req, res) => {
     try {
-      const { emotion } = req.query;
-      let songs;
-      
-      if (emotion) {
-        songs = await musicModel.getSongsByEmotion(emotion);
-      } else {
-        songs = await musicModel.getAllSongs();
-      }
-      
-      // Convert local paths to URLs
-      const songsWithUrls = convertArrayPathsToUrls(songs);
-      
+      const userId = req.user.userId; // Get user ID from auth middleware
+      const songs = await musicModel.getAllSongs(userId);
       res.json({
         success: true,
-        count: songsWithUrls.length,
-        data: songsWithUrls
+        data: songs
       });
     } catch (error) {
       console.error('Error fetching songs:', error);
       res.status(500).json({
         success: false,
-        message: 'Error fetching songs',
-        error: error.message
+        message: 'Error fetching songs'
       });
     }
   },

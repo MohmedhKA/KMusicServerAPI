@@ -5,6 +5,7 @@ const https = require('https');
 const fs = require('fs');
 const musicRoutes = require('./routes/musicRoutes');
 const playlistRoutes = require('./routes/playlistRoutes');
+const authRoutes = require('./routes/authRoutes');
 
 // Add this near the top of the file, after imports
 if (!process.env.BASE_URL || process.env.BASE_URL.startsWith('http:')) {
@@ -85,6 +86,7 @@ app.use('/thumbnails', express.static('/home/shin_chan/musicServer/Data/thumb', 
 // Routes
 app.use('/api/music', musicRoutes);
 app.use('/api/playlists', playlistRoutes);
+app.use('/api/auth', authRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

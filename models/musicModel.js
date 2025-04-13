@@ -2,10 +2,10 @@ const db = require('../config/db');
 
 // Music model functions
 const musicModel = {
-  // Add new song function at the top
-  addSong: async (songData) => {
+  // Modify addSong to include user_id
+  addSong: async (songData, userId) => {
     const result = await db.query(
-      'INSERT INTO songs (title, artist, album, duration, emotion, file_location, thumbnail) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      'INSERT INTO songs (title, artist, album, duration, emotion, file_location, thumbnail, user_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
       [
         songData.title,
         songData.artist,
@@ -13,21 +13,22 @@ const musicModel = {
         songData.duration,
         songData.emotion,
         songData.file_location,
-        songData.thumbnail
+        songData.thumbnail,
+        userId
       ]
     );
     return result.rows[0];
   },
 
-  // Get all songs
-  getAllSongs: async () => {
-    const result = await db.query('SELECT * FROM songs ORDER BY title');
+  // Modify getAllSongs to filter by user_id
+  getAllSongs: async (userId) => {
+    const result = await db.query('SELECT * FROM songs WHERE user_id = $1 ORDER BY title', [userId]);
     return result.rows;
   },
 
-  // Get songs by emotion
-  getSongsByEmotion: async (emotion) => {
-    const result = await db.query('SELECT * FROM songs WHERE emotion = $1 ORDER BY title', [emotion]);
+  // Modify other relevant functions to include user_id filter
+  getSongsByEmotion: async (emotion, userId) => {
+    const result = await db.query('SELECT * FROM songs WHERE emotion = $1 AND user_id = $2 ORDER BY title', [emotion, userId]);
     return result.rows;
   },
 
