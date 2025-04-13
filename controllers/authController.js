@@ -60,11 +60,13 @@ const authController = {
 
   login: async (req, res) => {
     try {
-      const { identifier, password } = req.body; // identifier can be username or email
+      const { identifier, password } = req.body;
+      console.log('Login attempt for identifier:', identifier);
 
       // Validate input
       if (!identifier || !password) {
-        return res.status(400).json({
+        console.log('Missing credentials');
+        return res.status(401).json({
           success: false,
           message: 'Identifier and password are required'
         });
@@ -73,6 +75,7 @@ const authController = {
       // Find user
       const user = await userModel.findUser(identifier);
       if (!user) {
+        console.log('User not found for identifier:', identifier);
         return res.status(401).json({
           success: false,
           message: 'Invalid credentials'
@@ -82,6 +85,7 @@ const authController = {
       // Verify password
       const isValidPassword = await bcrypt.compare(password, user.password_hash);
       if (!isValidPassword) {
+        console.log('Invalid password for user:', identifier);
         return res.status(401).json({
           success: false,
           message: 'Invalid credentials'
@@ -95,24 +99,24 @@ const authController = {
         { expiresIn: '24h' }
       );
 
+      console.log('Login successful for user:', user.username);
+      
       res.json({
         success: true,
-        message: 'Login successful',
         data: {
+          token,
           user: {
             userId: user.user_id,
             username: user.username,
             email: user.email
-          },
-          token
+          }
         }
       });
     } catch (error) {
       console.error('Login error:', error);
       res.status(500).json({
         success: false,
-        message: 'Error during login',
-        error: error.message
+        message: 'Error during login'
       });
     }
   }

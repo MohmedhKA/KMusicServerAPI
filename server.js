@@ -27,6 +27,10 @@ console.log(`Using BASE_URL: ${process.env.BASE_URL}`);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Middleware
+app.use(cors());
+app.use(express.json());
+
 // Add this before any route handlers
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', 'https://100.102.217.22:3001');
@@ -66,6 +70,12 @@ app.use((req, res, next) => {
   next();
 });
 
+// Add this before your routes
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.originalUrl}`);
+  next();
+});
+
 // Static file serving (for music files and thumbnails)
 app.use('/music', express.static('/home/shin_chan/musicServer/Data', {
   setHeaders: (res, path) => {
@@ -83,10 +93,10 @@ app.use('/thumbnails', express.static('/home/shin_chan/musicServer/Data/thumb', 
   }
 }));
 
-// Routes
+// Mount routes with /api prefix
+app.use('/api/auth', authRoutes);
 app.use('/api/music', musicRoutes);
 app.use('/api/playlists', playlistRoutes);
-app.use('/api/auth', authRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

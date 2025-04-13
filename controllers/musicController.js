@@ -9,7 +9,8 @@ const BASE_URL = process.env.BASE_URL || 'https://100.102.217.22:3000';
 
 // Base paths
 const DATA_DIR = '/home/shin_chan/musicServer/Data';
-const DEFAULT_THUMBNAIL = path.join(DATA_DIR, 'thumb', 'default.jpg');
+const THUMB_DIR = path.join(DATA_DIR, 'thumb');
+const DEFAULT_THUMBNAIL = path.join(THUMB_DIR, 'default.jpg');
 const DEFAULT_THUMBNAIL_URL = 'default.jpg';
 
 // Helper function to clean object for logging (remove binary data)
@@ -33,59 +34,47 @@ const cleanForLogging = (obj) => {
 
 // Function to convert local file paths to accessible URLs
 const convertPathsToUrls = (song) => {
-  console.log('\n=== Converting Paths to URLs ===');
+  console.log('\n=== Converting Paths to URLs for song:', song ? song.title : 'N/A', '===');
   if (!song) {
     console.log('No song provided');
     return null;
   }
   
-  console.log('Input song data:', JSON.stringify(cleanForLogging(song), null, 2));
   const songCopy = { ...song };
   
-  // Fix incorrect thumbnail path if it's in the wrong location
-  if (songCopy.thumbnail && songCopy.thumbnail.includes('/musicServer/thumb/')) {
-    songCopy.thumbnail = songCopy.thumbnail.replace('/musicServer/thumb/', '/musicServer/Data/thumb/');
-    console.log('Fixed thumbnail path:', songCopy.thumbnail);
-  }
-  
-  // Convert file location to URL
+  // Convert file location to URL with /api prefix
   if (songCopy.file_location) {
-    console.log('Processing file_location:', songCopy.file_location);
-    // Get just the filename from the full path
     const filename = path.basename(songCopy.file_location);
-    songCopy.fileUrl = `${BASE_URL}/music/${encodeURIComponent(filename)}`;
+    songCopy.fileUrl = `${BASE_URL}/api/music/play/${encodeURIComponent(song.title)}`;
     console.log('Generated fileUrl:', songCopy.fileUrl);
   } else {
     console.log('No file_location found in song data');
   }
   
-  // Convert thumbnail path to URL
-  console.log('Processing thumbnail path:', songCopy.thumbnail);
+  // Convert thumbnail path to URL with /api prefix
   if (songCopy.thumbnail && songCopy.thumbnail !== DEFAULT_THUMBNAIL) {
-    // Verify thumbnail file exists
     try {
       if (fs.existsSync(songCopy.thumbnail)) {
-        // Just use the basename for thumbnails since they're all in the thumb directory
         const thumbnailFilename = path.basename(songCopy.thumbnail);
-        songCopy.thumbnailUrl = `${BASE_URL}/thumbnails/${encodeURIComponent(thumbnailFilename)}`;
+        songCopy.thumbnailUrl = `${BASE_URL}/api/thumbnails/${encodeURIComponent(thumbnailFilename)}`;
         console.log('Generated thumbnailUrl:', songCopy.thumbnailUrl);
       } else {
-        console.log('Warning: Thumbnail file does not exist:', songCopy.thumbnail);
+        console.warn('Thumbnail file does not exist:', songCopy.thumbnail);
         songCopy.thumbnail = DEFAULT_THUMBNAIL;
-        songCopy.thumbnailUrl = `${BASE_URL}/thumbnails/${DEFAULT_THUMBNAIL_URL}`;
+        songCopy.thumbnailUrl = `${BASE_URL}/api/thumbnails/${DEFAULT_THUMBNAIL_URL}`;
       }
     } catch (error) {
       console.error('Error checking thumbnail file:', error);
       songCopy.thumbnail = DEFAULT_THUMBNAIL;
-      songCopy.thumbnailUrl = `${BASE_URL}/thumbnails/${DEFAULT_THUMBNAIL_URL}`;
+      songCopy.thumbnailUrl = `${BASE_URL}/api/thumbnails/${DEFAULT_THUMBNAIL_URL}`;
     }
   } else {
     console.log('No thumbnail found or using default');
     songCopy.thumbnail = DEFAULT_THUMBNAIL;
-    songCopy.thumbnailUrl = `${BASE_URL}/thumbnails/${DEFAULT_THUMBNAIL_URL}`;
+    songCopy.thumbnailUrl = `${BASE_URL}/api/thumbnails/${DEFAULT_THUMBNAIL_URL}`;
   }
   
-  console.log('Final converted song data:', JSON.stringify(cleanForLogging(songCopy), null, 2));
+  console.log('Final converted song data:', songCopy);
   console.log('=== Path Conversion Complete ===\n');
   return songCopy;
 };
@@ -127,8 +116,13 @@ const uploadSong = async (req, res) => {
 
     const emotion = req.body.emotion || 'Unknown'; // Get emotion from request body
 
-    // File is already in the correct directory (DATA_DIR) thanks to multer config
-    const finalFilePath = file.path;
+    // Update final file path to be directly in DATA_DIR
+    const finalFilePath = path.join(DATA_DIR, file.filename);
+    
+    // Move file if it's not already in the correct location
+    if (file.path !== finalFilePath) {
+      fs.renameSync(file.path, finalFilePath);
+    }
 
     // Extract metadata
     const common = metadata.common;
@@ -147,7 +141,12 @@ const uploadSong = async (req, res) => {
     // Handle thumbnail extraction
     if (common.picture && common.picture.length > 0) {
       const imageBuffer = common.picture[0].data;
-      const thumbnailPath = path.join(DATA_DIR, 'thumb', `${path.basename(file.filename, '.mp3')}.jpg`);
+      const thumbnailPath = path.join(THUMB_DIR, `${path.basename(file.filename, '.mp3')}.jpg`);
+      
+      // Ensure thumb directory exists
+      if (!fs.existsSync(THUMB_DIR)) {
+        fs.mkdirSync(THUMB_DIR, { recursive: true });
+      }
 
       await sharp(imageBuffer)
         .resize(300, 300)
@@ -189,20 +188,55 @@ const uploadSong = async (req, res) => {
 
 // Music controller functions
 const musicController = {
-  // Get all songs or filter by emotion
+  // Get all songs with options for playlists
   getSongs: async (req, res) => {
     try {
-      const userId = req.user.userId; // Get user ID from auth middleware
-      const songs = await musicModel.getAllSongs(userId);
+      const { playlist } = req.query;
+      const userId = req.user.userId;
+      
+      console.log('Getting songs for user:', userId, 'playlist:', playlist);
+      
+      let songs;
+      if (playlist) {
+        console.log('Fetching playlist songs for emotion:', playlist);
+        songs = await musicModel.getSongsByEmotion(playlist);
+      } else {
+        console.log('Fetching all songs for user:', userId);
+        songs = await musicModel.getAllSongs(userId);
+      }
+
+      if (!songs) {
+        console.log('No songs found');
+        return res.json({
+          success: true,
+          data: []
+        });
+      }
+
+      console.log(`Found ${songs.length} songs`);
+      
+      // Convert paths to URLs
+      const songsWithUrls = songs.map(song => {
+        const filename = path.basename(song.file_location);
+        const thumbnailFilename = song.thumbnail ? path.basename(song.thumbnail) : 'default.jpg';
+        
+        return {
+          ...song,
+          fileUrl: `${BASE_URL}/api/music/play/${encodeURIComponent(song.title)}`,
+          thumbnailUrl: `${BASE_URL}/api/thumbnails/${encodeURIComponent(thumbnailFilename)}`
+        };
+      });
+
       res.json({
         success: true,
-        data: songs
+        data: songsWithUrls
       });
     } catch (error) {
-      console.error('Error fetching songs:', error);
+      console.error('Error in getSongs:', error);
       res.status(500).json({
         success: false,
-        message: 'Error fetching songs'
+        message: 'Error fetching songs',
+        error: error.message
       });
     }
   },
@@ -237,40 +271,61 @@ const musicController = {
     }
   },
 
-  // Get song by title for playback
+  // Update playSong to serve the actual file
   playSong: async (req, res) => {
     try {
       const { title } = req.params;
       const song = await musicModel.getSongByTitle(decodeURIComponent(title));
       
       if (!song) {
-        return res.status(404).json({
-          success: false,
-          message: 'Song not found'
+        return res.status(404).json({ 
+          success: false, 
+          message: 'Song not found' 
         });
       }
-      
-      // Convert local paths to URLs
-      const songWithUrls = convertPathsToUrls(song);
-      
-      // Return file URL for the client to play
-      res.json({
-        success: true,
-        data: {
-          title: songWithUrls.title,
-          artist: songWithUrls.artist,
-          fileLocation: songWithUrls.file_location, // Keep for backward compatibility
-          fileUrl: songWithUrls.fileUrl,          // Add URL for streaming
-          thumbnail: songWithUrls.thumbnail,      // Keep for backward compatibility
-          thumbnailUrl: songWithUrls.thumbnailUrl // Add URL for thumbnails
-        }
-      });
+
+      // Check if file exists
+      if (!fs.existsSync(song.file_location)) {
+        return res.status(404).json({
+          success: false,
+          message: 'Audio file not found'
+        });
+      }
+
+      // Get file stats
+      const stat = fs.statSync(song.file_location);
+      const fileSize = stat.size;
+      const range = req.headers.range;
+
+      if (range) {
+        const parts = range.replace(/bytes=/, "").split("-");
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+        const chunksize = (end - start) + 1;
+        const file = fs.createReadStream(song.file_location, {start, end});
+        
+        res.writeHead(206, {
+          'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+          'Accept-Ranges': 'bytes',
+          'Content-Length': chunksize,
+          'Content-Type': 'audio/mpeg'
+        });
+        
+        file.pipe(res);
+      } else {
+        res.writeHead(200, {
+          'Content-Length': fileSize,
+          'Content-Type': 'audio/mpeg',
+          'Accept-Ranges': 'bytes'
+        });
+        
+        fs.createReadStream(song.file_location).pipe(res);
+      }
     } catch (error) {
-      console.error('Error fetching song for playback:', error);
+      console.error('Error streaming song:', error);
       res.status(500).json({
         success: false,
-        message: 'Error fetching song for playback',
-        error: error.message
+        message: 'Error streaming song'
       });
     }
   },
@@ -395,6 +450,28 @@ const musicController = {
         message: 'Error deleting song',
         error: error.message
       });
+    }
+  },
+
+  // Add a new endpoint for serving thumbnails
+  getThumbnail: async (req, res) => {
+    try {
+      const { filename } = req.params;
+      console.log('Thumbnail request for:', filename);
+      const thumbnailPath = path.join(THUMB_DIR, filename);
+      
+      console.log('Looking for thumbnail at:', thumbnailPath);
+      if (!fs.existsSync(thumbnailPath)) {
+        console.log(`Thumbnail not found: ${thumbnailPath}, serving default from: ${DEFAULT_THUMBNAIL}`);
+        return res.sendFile(DEFAULT_THUMBNAIL);
+      }
+      
+      console.log('Serving thumbnail from:', thumbnailPath);
+      res.sendFile(thumbnailPath);
+    } catch (error) {
+      console.error('Error serving thumbnail:', error);
+      console.log('Serving default thumbnail due to error');
+      res.sendFile(DEFAULT_THUMBNAIL);
     }
   },
 

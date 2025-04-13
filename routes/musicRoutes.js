@@ -21,6 +21,9 @@ const formatSong = (song) => {
   };
 };
 
+// Add thumbnail route before other routes
+router.get('/thumbnails/:filename', musicController.getThumbnail);
+
 // POST routes
 router.post('/upload', uploadMusic.single('song'), musicController.uploadSong);
 
